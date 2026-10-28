@@ -6,14 +6,14 @@ using MelonLoader;
 using UnityEngine;
 using UnityEngine.UI;
 
-[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.0", "waze3174")]
+[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.1", "waze3174")]
 [assembly: MelonGame]
 
 namespace WalkingCoach;
 
-// shows what nate's legs are feeling, to learn walking from: grip and slip under each foot, fatigue,
-// how far you lean against the game's own fall rule, and your weight against your feet.
-// markers are drawn on a screen overlay at the feet's projected positions (no game shaders needed)
+// shows what nate's legs feel, to learn walking from: grip and slip under each foot, fatigue, how far you lean
+// against the game's own fall rule, and where your weight is against your feet. the markers are drawn on a screen
+// overlay where the feet show up on screen, so i don't need any of the game's shaders
 public class Core : MelonMod
 {
     MelonPreferences_Entry<bool> shown;
@@ -30,15 +30,15 @@ public class Core : MelonMod
     }
 
     // ---- the game's fall rule ----
-    // you're held up as long as one planted leg leans less than 55 degrees; past that, leaning over 30-40 degrees kills you in 1/8 s
+    // you stay up as long as one planted leg leans less than 55 degrees. past that, leaning over 30-40 degrees drops you in 1/8 s
     const float LegHoldsAngle = 55f;
     const float SteepSlope = 45f;             // slope colour: green on flat ground, red at this angle (grip's flat-ground bonus is gone by 30)
     const float LeanFrom = 30f;              // lean colour fades from green here to red at LegHoldsAngle
-    // both feet planted more than 1.95 leg lengths apart = the splits, instant fall
+    // both feet planted more than 1.95 leg lengths apart is the splits, an instant fall
     const float SplitsAt = 1.95f, SplitsFrom = 1f, SplitsRed = 1.9f;   // line fades from white at 1 leg length to red at 1.9
     const float OutsideRed = 0.25f;           // weight this far (m) outside the feet = full red diamond
 
-    // smooth warning colour: 0 = green, 0.5 = yellow, 1 = red
+    // warning colour, smooth: 0 green, 0.5 yellow, 1 red
     static Color Ramp(float t)
     {
         t = Mathf.Clamp01(t);
@@ -52,7 +52,8 @@ public class Core : MelonMod
         return t < 0.5f ? Color.Lerp(Color.white, Warn, t * 2f) : Color.Lerp(Warn, Bad, (t - 0.5f) * 2f);
     }
 
-    // grip colours (Surface traction: wood 1.09, dirt 0.96, rock 0.89, grass 0.88, gravel / moss 0.73, mud 0.59, ice 0.14; x1.5 on flat ground)
+    // grip colours. the game's grip per surface: wood 1.09, dirt 0.96, rock 0.89, grass 0.88, gravel / moss 0.73, mud 0.59,
+    // ice 0.14, and x1.5 on flat ground
     static Color GripColor(float g) =>
         g >= 0.85f ? new Color(0.45f, 1f, 0.5f) :
         g >= 0.6f ? new Color(1f, 0.9f, 0.35f) :
@@ -69,6 +70,7 @@ public class Core : MelonMod
     Image[] footImg = new Image[2];
     RectTransform comMark, supportLine;
     Image comImg, supportImg;
+    Canvas canvas;
 
     bool errorLogged;
 
@@ -105,7 +107,7 @@ public class Core : MelonMod
             for (int i = 0; i < 2; i++) footMark[i].gameObject.SetActive(false);
             supportLine.gameObject.SetActive(false);
             comMark.gameObject.SetActive(false);
-            text.text = $"<color=#{Hex(Bad)}>DOWN</color>\n";
+            SetText($"<color=#{Hex(Bad)}>DOWN</color>\n");
             return;
         }
         Vector3 liftedPos = default; bool anyLifted = false;
@@ -160,8 +162,8 @@ public class Core : MelonMod
 
         // support: line between the planted feet, centre of mass on the ground between them
         var com = pm.centerOfMass;
-        // the game's own fall timers run only when you're about to go down: off balance (dies past 0.125 s),
-        // or standing with your weight outside your feet (magicFallOffTimer)
+        // the game's own fall timers only run when you're about to go down: off balance (down after 0.125 s), or
+        // standing with your weight outside your feet (magicFallOffTimer)
         bool falling = pm.offBalanceDeathTimer > 0f || pm.magicFallOffTimer > 0f;
         float spread = 0f;
         if (planted == 2)
@@ -179,7 +181,7 @@ public class Core : MelonMod
         }
         else if (planted == 1)
         {
-            // planted foot to the lifted one, faint: how far apart they'd be if you put it down there
+            // faint line from the planted foot to the lifted one: how far apart they'd be if you put it down there
             if (anyLifted)
             {
                 float legLen = pm.legLength > 0.01f ? pm.legLength : 0.79f;
@@ -197,8 +199,11 @@ public class Core : MelonMod
         if (spread >= SplitsFrom)
             sb.Append($"<color=#{Hex(LineRamp(spread))}>SPLITS<pos=340>{spread / SplitsAt * 100f:0}%</color><pos=440>{Bar(spread / SplitsAt)}\n");
 
-        text.text = sb.ToString();
+        SetText(sb.ToString());
     }
+
+    // only when it changed: setting it makes the text lay itself out again
+    void SetText(string s) { if (text.text != s) text.text = s; }
 
     // column titles, dimmed
     static string Header(string a, string b, string c, string d) => $"<alpha=#80><size=80%>{a}<pos=250>{b}<pos=340>{c}<pos=440>{d}</size><alpha=#FF>\n";
@@ -223,7 +228,7 @@ public class Core : MelonMod
         return new string('|', n) + "<alpha=#40>" + new string('|', 10 - n) + "<alpha=#FF>";
     }
 
-    // plain maths instead of unity helpers the game's build may have stripped
+    // plain maths, the game's build may have stripped some unity helpers
     static string Hex(Color c) => $"{(int)(Mathf.Clamp01(c.r) * 255):X2}{(int)(Mathf.Clamp01(c.g) * 255):X2}{(int)(Mathf.Clamp01(c.b) * 255):X2}";
 
     static float AngleFromUp(Vector3 v)
@@ -256,7 +261,7 @@ public class Core : MelonMod
         if (pa.z <= 0f || pb.z <= 0f) { line.gameObject.SetActive(false); return; }
         line.gameObject.SetActive(true);
         var d = (Vector2)(pb - pa);
-        float scale = root.GetComponent<Canvas>().scaleFactor;
+        float scale = canvas.scaleFactor;
         line.position = new Vector3((pa.x + pb.x) * 0.5f, (pa.y + pb.y) * 0.5f, 0f);
         line.sizeDelta = new Vector2(d.magnitude / scale, 3f);
         line.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
@@ -266,7 +271,7 @@ public class Core : MelonMod
     {
         root = new GameObject("WalkingCoach");
         UnityEngine.Object.DontDestroyOnLoad(root);
-        var canvas = root.AddComponent<Canvas>();
+        canvas = root.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 400;
         var scaler = root.AddComponent<CanvasScaler>();
