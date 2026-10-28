@@ -92,48 +92,34 @@ public class Core : MelonMod
     }
 
     // ---- the game's input display ----
-    // it's a picture in the bottom left, right where the panel goes: while the coach shows it moves to the bottom
-    // middle, and goes back when the coach hides
+    // it sits in the bottom left, right where the panel goes. the game draws it every frame (InputGraph.DrawShapes)
+    // in front of the camera, from the screen's left edge: 6 units of height down from the middle, 6 x the camera's
+    // aspect to the left, the sticks' circles 1.1 and 3.4 radii in. while the coach shows, the aspect it reads during
+    // that draw is the one that puts the left edge 2.25 radii left of the middle: the graph sits in the bottom middle
 
-    RectTransform graph;
-    Vector2 graphMin, graphMax, graphPivot, graphPos;
-    bool graphMoved;
-    float nextGraphLook;
+    internal static bool CentreGraph;
+    static bool inGraph;
+    static float graphRadius;
 
-    void MoveGraph(bool coachOn)
+    [HarmonyLib.HarmonyPatch(typeof(Il2Cpp.InputGraph), nameof(Il2Cpp.InputGraph.DrawShapes))]
+    static class GraphDraw
     {
-        if (Time.unscaledTime >= nextGraphLook)
+        static void Prefix(Il2Cpp.InputGraph __instance)
         {
-            nextGraphLook = Time.unscaledTime + 0.5f;
-            var cam = Camera.main;
-            var g = cam != null ? cam.GetComponent<Il2Cpp.InputGraph>() : null;
-            var img = g != null ? g.rtImage : null;
-            var rt = img != null ? img.rectTransform : null;
-            if (rt == null ? graph != null : graph == null || rt.Pointer != graph.Pointer)
-            {
-                if (graphMoved) PutGraphBack();
-                graph = rt;
-            }
+            inGraph = CentreGraph;
+            if (inGraph) graphRadius = __instance.circleRadius;
         }
-        if (graph == null) return;
-        if (!coachOn) { if (graphMoved) PutGraphBack(); return; }
-        if (!graphMoved)
-        {
-            graphMin = graph.anchorMin; graphMax = graph.anchorMax; graphPivot = graph.pivot; graphPos = graph.anchoredPosition;
-            graphMoved = true;
-        }
-        // same gap from the bottom as it had in its corner
-        var mid = new Vector2(0.5f, 0f);
-        var pos = new Vector2(0f, graphMin.y == 0f && graphPivot.y == 0f ? graphPos.y : 20f);
-        if (graph.anchorMin != mid || graph.anchorMax != mid || graph.pivot != mid) { graph.anchorMin = graph.anchorMax = graph.pivot = mid; }
-        if (graph.anchoredPosition != pos) graph.anchoredPosition = pos;
+
+        static void Finalizer() => inGraph = false;
     }
 
-    void PutGraphBack()
+    [HarmonyLib.HarmonyPatch(typeof(Camera), nameof(Camera.aspect), HarmonyLib.MethodType.Getter)]
+    static class GraphAspect
     {
-        graphMoved = false;
-        if (graph == null) return;
-        graph.anchorMin = graphMin; graph.anchorMax = graphMax; graph.pivot = graphPivot; graph.anchoredPosition = graphPos;
+        static void Postfix(ref float __result)
+        {
+            if (inGraph && graphRadius > 0f) __result = 2.25f * graphRadius / 6f;
+        }
     }
 
     void Draw()
@@ -142,7 +128,7 @@ public class Core : MelonMod
         var menu = Il2Cpp.Menu.me;
         var cam = Camera.main;
         bool on = shown.Value && pm != null && cam != null && (menu == null || !menu.paused);
-        MoveGraph(on);
+        CentreGraph = on;
         if (!on) { if (root != null) root.SetActive(false); return; }
         if (root == null && !Make(menu)) return;
         root.SetActive(true);
