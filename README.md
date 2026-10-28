@@ -15,7 +15,9 @@ in the bottom left:
 - **BALANCE**: your lean against the game's limit, and how close you are to the splits
 - stays up while you're down
 
-**F6** shows / hides it (on by default).
+**F4** shows / hides it (on by default).
+
+the panel sits where the game's input display (or practicetools' input display) goes, so keep that off while you use the coach. with rulebook's rules list on, the list moves up out of the panel's way.
 
 ## how the warnings work
 
@@ -34,7 +36,7 @@ the numbers come from the game's own rules, measured from the game:
 `Baby Steps/UserData/WalkingCoach/WalkingCoach.cfg` (made on first launch):
 
 - `Shown` on or off
-- `ToggleKey` the key (default `F6`)
+- `ToggleKey` the key (default `F4`)
 
 ## build
 

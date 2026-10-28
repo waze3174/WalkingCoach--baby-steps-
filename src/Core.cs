@@ -6,7 +6,7 @@ using MelonLoader;
 using UnityEngine;
 using UnityEngine.UI;
 
-[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.1", "waze3174")]
+[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.2", "waze3174")]
 [assembly: MelonGame]
 
 namespace WalkingCoach;
@@ -26,7 +26,10 @@ public class Core : MelonMod
         var cat = MelonPreferences.CreateCategory("WalkingCoach");
         cat.SetFilePath(Path.Combine(dir, "WalkingCoach.cfg"));
         shown = cat.CreateEntry("Shown", true, "Shown", "Coach on or off (also toggled in game with ToggleKey).");
-        toggleKey = cat.CreateEntry("ToggleKey", KeyCode.F6, "Toggle key", "Key that shows / hides the coach.");
+        toggleKey = cat.CreateEntry("ToggleKey", KeyCode.F4, "Toggle key", "Key that shows / hides the coach.");
+        // it was F6 before 1.0.2, which PracticeTools uses for its sunglasses view: moved once
+        var moved = cat.CreateEntry("KeyMoved", false, is_hidden: true);
+        if (!moved.Value) { if (toggleKey.Value == KeyCode.F6) toggleKey.Value = KeyCode.F4; moved.Value = true; cat.SaveToFile(false); }
     }
 
     // ---- the game's fall rule ----
