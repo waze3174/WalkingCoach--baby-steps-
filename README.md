@@ -17,7 +17,7 @@ in the bottom left:
 
 **F4** shows / hides it (on by default).
 
-the panel sits where the game's input display (or practicetools' input display) goes, so keep that off while you use the coach. with rulebook's rules list on, the list moves up out of the panel's way.
+the panel sits where the game's input display goes, so while the coach shows the input display moves to the bottom middle of the screen (back to its corner when the coach hides). with rulebook's rules list on, the list moves up out of the panel's way.
 
 ## how the warnings work
 

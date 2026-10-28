@@ -6,7 +6,7 @@ using MelonLoader;
 using UnityEngine;
 using UnityEngine.UI;
 
-[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.2", "waze3174")]
+[assembly: MelonInfo(typeof(WalkingCoach.Core), "WalkingCoach", "1.0.3", "waze3174")]
 [assembly: MelonGame]
 
 namespace WalkingCoach;
@@ -91,12 +91,58 @@ public class Core : MelonMod
         }
     }
 
+    // ---- the game's input display ----
+    // it's a picture in the bottom left, right where the panel goes: while the coach shows it moves to the bottom
+    // middle, and goes back when the coach hides
+
+    RectTransform graph;
+    Vector2 graphMin, graphMax, graphPivot, graphPos;
+    bool graphMoved;
+    float nextGraphLook;
+
+    void MoveGraph(bool coachOn)
+    {
+        if (Time.unscaledTime >= nextGraphLook)
+        {
+            nextGraphLook = Time.unscaledTime + 0.5f;
+            var cam = Camera.main;
+            var g = cam != null ? cam.GetComponent<Il2Cpp.InputGraph>() : null;
+            var img = g != null ? g.rtImage : null;
+            var rt = img != null ? img.rectTransform : null;
+            if (rt == null ? graph != null : graph == null || rt.Pointer != graph.Pointer)
+            {
+                if (graphMoved) PutGraphBack();
+                graph = rt;
+            }
+        }
+        if (graph == null) return;
+        if (!coachOn) { if (graphMoved) PutGraphBack(); return; }
+        if (!graphMoved)
+        {
+            graphMin = graph.anchorMin; graphMax = graph.anchorMax; graphPivot = graph.pivot; graphPos = graph.anchoredPosition;
+            graphMoved = true;
+        }
+        // same gap from the bottom as it had in its corner
+        var mid = new Vector2(0.5f, 0f);
+        var pos = new Vector2(0f, graphMin.y == 0f && graphPivot.y == 0f ? graphPos.y : 20f);
+        if (graph.anchorMin != mid || graph.anchorMax != mid || graph.pivot != mid) { graph.anchorMin = graph.anchorMax = graph.pivot = mid; }
+        if (graph.anchoredPosition != pos) graph.anchoredPosition = pos;
+    }
+
+    void PutGraphBack()
+    {
+        graphMoved = false;
+        if (graph == null) return;
+        graph.anchorMin = graphMin; graph.anchorMax = graphMax; graph.pivot = graphPivot; graph.anchoredPosition = graphPos;
+    }
+
     void Draw()
     {
         var pm = Il2Cpp.PlayerMovement.me;
         var menu = Il2Cpp.Menu.me;
         var cam = Camera.main;
         bool on = shown.Value && pm != null && cam != null && (menu == null || !menu.paused);
+        MoveGraph(on);
         if (!on) { if (root != null) root.SetActive(false); return; }
         if (root == null && !Make(menu)) return;
         root.SetActive(true);
